@@ -30,7 +30,7 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 app.use(session({
-  secret: 'WIKIWIKI_PROVISION',
+  secret: 'PROVISION',
   resave: true,
   saveUninitialized: true
 }));

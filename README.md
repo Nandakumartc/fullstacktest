@@ -1,3 +1,35 @@
+# BackEnd
+
+
+## Setup the application in local.
+
+This project uses python3. 
+
+### Install `virtualenv` 
+```
+pip install virtualenv
+```
+
+### Create a virtual env in the current directory
+```
+virtualenv venv --python=</path/to/python3>
+```
+
+### Activate virtual env 
+```
+source venv/bin/activate
+```
+
+### Install the requirements
+```
+pip install -r requirements.txt
+```
+
+
+
+
+
+
 # Frontend
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 8.3.23.
