@@ -7,20 +7,12 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const fs = require('fs');
-const fileUpload = require('express-fileupload');
-var multipart = require('connect-multiparty');
-var multipartMiddleware = multipart({ uploadDir: '/tmp' });
-var multer = require('multer');
-const ENV = process.env.ABATTERY_CLUSTER;
+const rateLimit = require("express-rate-limit");
 const args = process.argv;
-//process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const HTTP_404 = 404;
 const LABEL_ERROR = 'error';
-const Webex = require(`webex`);
-
-// Load environment variables from project .env file
-require('node-env-file')(__dirname + '/.env');
 
 app.use(bodyParser.json({
   limit: '50mb'
@@ -29,8 +21,9 @@ app.use(bodyParser.urlencoded({
   limit: '50mb',
   extended: true
 }));
+
 app.use(session({
-  secret: 'PROVISION',
+  secret: 'FULLSTACK',
   resave: true,
   saveUninitialized: true
 }));
@@ -38,17 +31,19 @@ app.use(session({
 let pubcookieUser = '';
 let appStaticPath = '';
 
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, //300 request , 5 minutes
+  max: 300
+});
+
 app.use((req, res, next) => {
   if (typeof req.headers['my-proxy-remote-user'] !== 'undefined') {
-      pubcookieUser = req.headers['my-proxy-remote-user'];
+      headername = req.headers['my-proxy-remote-user'];
       req.session.loggedUser = req.headers['my-proxy-remote-user'];
-      if(pubcookieUser == 'testuser'){
-        pubcookieUser = 'nanda';
-    }
   } else {
-    pubcookieUser = 'nanda';
+    headername = 'nanda';
   }
-  req.session.loggedUser = pubcookieUser;
+  req.session.loggedUser = headername;
   if (args[args.length - 1] && (args[args.length - 1].indexOf('=') !== -1))
     req.session.verbose = Number(args[args.length - 1].split('=')[1]);
   else
@@ -57,18 +52,17 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.header('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
-  res.header("x-proxy-remote-user", pubcookieUser);
-  res.header("X-PROXY-REMOTE-USER", req.session.loggedUser);
+  res.header("my-proxy-remote-user", req.session.loggedUser);
   next();
 });
 
 appStaticPath = path.join(__dirname, '../../static');
-app.use(express.static(path.join(__dirname, '../../static')));
+app.use(express.static(appStaticPath));
 
 function prepare_url_param(request, method) {
   let uri = environment.API_URL + "/" + request.API
   if (typeof request.USER != 'undefined') {
-    uri += "/" + pubcookieUser
+    uri += "/" + headername
   }
   if (method !== 'POST') {
     uri += '?';
@@ -80,6 +74,18 @@ function prepare_url_param(request, method) {
   }
   return uri;
 }
+
+app.use("/api/", apiLimiter);
+
+const createAccountLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour window
+  max: 5, // start blocking after 5 requests
+  message:
+    "Too many accounts created from this IP, please try again after an hour"
+});
+app.post("/create-account", createAccountLimiter, function (req, res) {
+  //...
+});
 
 app.get(/api_(\w)+/i, function (req, res) {
 
@@ -152,7 +158,7 @@ app.post('/requestupload', function (req, res) {
 });
 
 app.post('/visitor', function (req, res) {
-  req.body.user = pubcookieUser;
+  req.body.user = headername;
   console.log(req.body)
   let options = {
     uri: environment.API_URL + "/" + endpoint.POST_VISITOR,
