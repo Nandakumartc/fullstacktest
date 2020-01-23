@@ -11,6 +11,8 @@ const rateLimit = require("express-rate-limit");
 const args = process.argv;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+const environment = require('./environment.js');
+
 const HTTP_404 = 404;
 const LABEL_ERROR = 'error';
 
@@ -187,39 +189,6 @@ app.post('/visitor', function (req, res) {
 });
 
 
-app.post('/file_upload', multipartMiddleware, (req, res) => {
-  let options = {
-    url: environment.NETSTORAGE_API+"/"+environment.NETSTORAGE_API_UPLOAD_API,
-    method: 'POST',
-    qs: environment.PARAMS,
-    strictSSL: false,
-    headers: {
-      'x-proxy-remote-user': req.session.loggedUser
-    },
-    json: true,
-    cert : fs.readFileSync(environment.CERT_FILE),
-    key : fs.readFileSync(environment.CERT_KEY),
-    formData: {
-      file: fs.createReadStream(req.files.file.path),
-    },
-  };
-  request(options, function (_err, _res, _body) {
-    if (_err) {
-      res.status(HTTP_404).send({
-        status: LABEL_ERROR,
-        errormsg: _err
-      });
-      console.log('[Error: ' + _err + ']');
-    } else {
-      fs.unlink(req.files.file.path, function (err) {
-        if (err) throw err;
-        console.log('File deleted from uploads directory!');
-      });
-      let results = _body;
-      res.status(_res.statusCode).send(results);
-    }
-  });
-});
 
 app.put('/profileupdate', function (req, res) {
   let options = {
